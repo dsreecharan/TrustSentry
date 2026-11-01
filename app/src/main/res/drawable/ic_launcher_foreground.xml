@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Golden Shield Outer Rim -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D4AF37"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M54,26 L82,38 L82,62 C82,76 70,88 54,93 C38,88 26,76 26,62 L26,38 Z" />
+    <!-- Inner Shield Accent Line -->
+    <path
+        android:fillColor="#15D4AF37"
+        android:strokeColor="#E5C158"
+        android:strokeWidth="1.2"
+        android:pathData="M54,32 L76,42 L76,60 C76,72 66,82 54,86 C42,82 32,72 32,60 L32,42 Z" />
+    <!-- Center Cryptographic Keyhole & Integrity Checkmark -->
+    <path
+        android:fillColor="#D4AF37"
+        android:pathData="M54,46 A4,4 0 1,0 54,54 A4,4 0 1,0 54,46 Z M52,53 L56,53 L57,63 L51,63 Z" />
+    <!-- Corner Crosshair Authenticity Markers -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#E5C158"
+        android:strokeWidth="1.5"
+        android:pathData="M44,70 L51,77 L66,61" />
+</vector>

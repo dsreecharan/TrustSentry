@@ -1,0 +1,8 @@
+{
+  "name": "TrustSentry",
+  "description": "Universal cryptographic authenticity and anti-tamper verification platform for Android. Features real-time CameraX scanning for W3C VCs, OpenID4VP, GS1 Link, and TS1 tokens with a zero-trust 7-stage PKI pipeline, ClamAV antivirus quarantine gate, phishing protection, and tamper-evident local audit logging.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

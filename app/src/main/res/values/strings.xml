@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">TrustSentry</string>
+    <string name="tagline">VERIFY BEFORE YOU TRUST</string>
+    <string name="subtitle">Universal Cryptographic Authenticity &amp; Tamper Verification</string>
+</resources>
