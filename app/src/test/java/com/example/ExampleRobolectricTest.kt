@@ -84,4 +84,31 @@ class ExampleRobolectricTest {
         assertEquals("MEDIUM", urlResult.riskLevel)
         assertTrue(urlResult.artifactType.contains("URL"))
     }
+
+    @Test
+    fun `crypto engine calculates deterministic sha256 hex digest`() {
+        val digest = CryptoEngine.computeSha256("abc")
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", digest)
+    }
+
+    @Test
+    fun `verification entity instantiates with proper attributes`() {
+        val entity = com.example.trustsentry.data.VerificationEntity(
+            artifactId = "DIP-9081",
+            artifactType = "W3C VC 2.0",
+            issuer = "did:web:mit.edu",
+            score = 98,
+            status = "TRUSTED",
+            riskLevel = "LOW",
+            explanation = "Mathematical proof confirmed",
+            rawValue = "sample-raw",
+            verifiedAt = System.currentTimeMillis(),
+            isPinned = true,
+            sha256Digest = "abcdef1234567890"
+        )
+        assertEquals("DIP-9081", entity.artifactId)
+        assertEquals("TRUSTED", entity.status)
+        assertTrue(entity.isPinned)
+        assertEquals(98, entity.score)
+    }
 }

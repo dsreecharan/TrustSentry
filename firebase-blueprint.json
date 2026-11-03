@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Represents an authenticated user profile in TrustSentry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Unique user ID matching Firebase Auth UID." },
+        "displayName": { "type": "string", "description": "User display name from Google Sign-In." },
+        "email": { "type": "string", "description": "User email address." },
+        "photoUrl": { "type": "string", "description": "User avatar image URL." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account registration timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Profile update timestamp." }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "VerificationRecord": {
+      "title": "VerificationRecord",
+      "description": "Cryptographic artifact verification event logged by user.",
+      "type": "object",
+      "properties": {
+        "artifactId": { "type": "string", "description": "Identifier of the verified artifact." },
+        "artifactType": { "type": "string", "description": "Standard type (e.g. W3C VC, TS1, GS1 Link)." },
+        "issuer": { "type": "string", "description": "Entity or DID authority that issued the artifact." },
+        "score": { "type": "integer", "description": "Trust score between 0 and 100." },
+        "status": { "type": "string", "description": "Verdict status (TRUSTED, REVIEW, SUSPICIOUS, INVALID, UNABLE_TO_VERIFY)." },
+        "riskLevel": { "type": "string", "description": "Calculated risk level (LOW, MEDIUM, HIGH, CRITICAL)." },
+        "explanation": { "type": "string", "description": "Human-readable explanation of verification checks." },
+        "rawValue": { "type": "string", "description": "Sanitized raw scanned payload." },
+        "sha256Digest": { "type": "string", "description": "SHA-256 digest of artifact payload." },
+        "verifiedAt": { "type": "string", "format": "date-time", "description": "Timestamp when verification was performed." },
+        "isPinned": { "type": "boolean", "description": "Whether artifact is pinned in user vault." }
+      },
+      "required": ["artifactId", "artifactType", "issuer", "score", "status", "riskLevel", "verifiedAt"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "Multi-turn Gemini AI advisory chat session.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title or topic of the AI advisory conversation." },
+        "modelUsed": { "type": "string", "description": "Gemini model identifier used." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Session creation timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last message timestamp." }
+      },
+      "required": ["title", "modelUsed", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Individual message in Gemini chat thread.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"], "description": "Sender role." },
+        "content": { "type": "string", "description": "Markdown or text content of the message." },
+        "model": { "type": "string", "description": "Gemini model that generated the response if role is model." },
+        "groundedSources": { "type": "string", "description": "JSON string of Google Search citations if grounded." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Message timestamp." }
+      },
+      "required": ["role", "content", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile collection isolated per authenticated user."
+    },
+    "/users/{userId}/verifications/{verificationId}": {
+      "schema": "VerificationRecord",
+      "description": "Cloud persistent verification audit trail for user."
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": "ChatSession",
+      "description": "AI advisory chat conversations for user."
+    },
+    "/users/{userId}/chats/{chatId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Messages belonging to an AI chat conversation."
+    }
+  }
+}

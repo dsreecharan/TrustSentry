@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-android-trustsen-20a7daec-d9d6-4a44-8ec5-6e3f5b87ffbe",
+      "rules": "firestore.rules"
+    }
+  ]
+}

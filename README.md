@@ -36,12 +36,13 @@
 4. [Supported Credential & Barcode Standards](#4-supported-credential--barcode-standards)
 5. [Application Architecture](#5-application-architecture)
 6. [Core Screen Modules & Features](#6-core-screen-modules--features)
-7. [Data Model & Persistence Layer](#7-data-model--persistence-layer)
-8. [Security, Privacy & Zero-Trust Threat Model](#8-security-privacy--zero-trust-threat-model)
-9. [Hardware & Sensor Integrations](#9-hardware--sensor-integrations)
-10. [Developer Setup & CLI Build Commands](#10-developer-setup--cli-build-commands)
-11. [Testing and Quality Assurance](#11-testing-and-quality-assurance)
-12. [Project Directory Tree](#12-project-directory-tree)
+7. [Cloud Sync & Zero-Trust Authentication](#7-cloud-sync--zero-trust-authentication)
+8. [Data Model & Persistence Layer](#8-data-model--persistence-layer)
+9. [Security, Privacy & Zero-Trust Threat Model](#9-security-privacy--zero-trust-threat-model)
+10. [Hardware & Sensor Integrations](#10-hardware--sensor-integrations)
+11. [Developer Setup & CLI Build Commands](#11-developer-setup--cli-build-commands)
+12. [Testing and Quality Assurance](#12-testing-and-quality-assurance)
+13. [Project Directory Tree](#13-project-directory-tree)
 
 ---
 
@@ -54,10 +55,11 @@ Get up and running with TrustSentry on your local machine in three steps:
 git clone https://github.com/<your-username>/trustsentry.git
 cd trustsentry
 ```
+*(Replace `<your-username>` with your GitHub handle or repository owner)*
 
 ### B. Open in Android Studio
-1. Launch **Android Studio** (Ladybug or newer).
-2. Choose **File -> Open...** and select the `trustsentry` directory.
+1. Launch **Android Studio** (Ladybug 2024.2.1 or newer).
+2. Choose **File -> Open...** and select the root `trustsentry` directory.
 3. Allow Gradle to synchronize dependencies automatically via the included Gradle wrapper (`9.3.1`).
 
 ### C. Build & Run from Command Line
@@ -69,7 +71,7 @@ chmod +x gradlew
 # On Windows (cmd / PowerShell):
 gradlew.bat assembleDebug
 
-# Run all unit and Robolectric tests:
+# Run all 11 Unit & Robolectric tests:
 ./gradlew :app:testDebugUnitTest
 ```
 The compiled debug APK will be generated at:
@@ -241,10 +243,12 @@ TrustSentry adheres strictly to modern Android architecture principles: **MVVM**
 | **UI Framework** | Jetpack Compose (BOM 2024.09.00) | Declarative UI toolkit with Material 3 |
 | **Camera** | CameraX 1.5.0 (`camera2`, `lifecycle`, `view`) | Hardware camera lifecycle and frame analysis |
 | **Barcode Engine** | ZXing Core 3.5.3 | High-performance multi-format barcode parsing |
+| **Cloud Database**| Firebase Firestore (`firebase-firestore`) | Secure cloud audit synchronization with zero-trust rules |
+| **Authentication**| Google Identity via Jetpack Credential Manager | Zero-trust authentication with `GetSignInWithGoogleOption` |
 | **Image Loading** | Coil Compose 2.7.0 | Kotlin-first image loader |
-| **Local Database**| Room 2.7.0 (`runtime`, `ktx`, `compiler` via KSP) | SQLite abstraction for persistent audit trail |
+| **Local Database**| Room 2.7.0 (`runtime`, `ktx`, `compiler` via KSP) | SQLite abstraction for persistent offline audit trail |
 | **Asynchrony** | Kotlinx Coroutines & Flow 1.10.2 | Reactive, lifecycle-aware asynchronous streams |
-| **Testing** | Robolectric 4.16.1 & JUnit 4.13.2 | Fast local JVM unit and integration testing |
+| **Testing** | Robolectric 4.14.1 & JUnit 4.13.2 | Fast local JVM unit and integration testing |
 
 ---
 
@@ -253,7 +257,7 @@ TrustSentry adheres strictly to modern Android architecture principles: **MVVM**
 ### 1. Home Screen (`HomeScreen.kt`)
 - **Top Brand Bar**: Shows system status (`TRUSTSENTRY ACTIVE`) and root PKI status badge.
 - **Hero Statement**: Clear value proposition highlighting mathematical cryptographic verification.
-- **Action Cards**: Direct one-tap navigation to "Scan QR / Barcode" (Direct) and "Upload Document" (Stage 1).
+- **Action Cards**: Direct navigation to "Scan QR / Barcode" (Direct), "Upload Document" (Stage 1), and "Saved Credentials Vault" (Offline).
 - **Zero-Trust Information Pill**: Highlights RSA-2048 & SHA-256 cryptographic guarantees.
 - **Recent Audit Trail**: Real-time reactive list of the last 5 verification events showing artifact ID, issuer, score badge, and timestamp.
 
@@ -290,6 +294,7 @@ TrustSentry adheres strictly to modern Android architecture principles: **MVVM**
 - **Biometric Protection**: Toggle for requiring biometric prompt to access audit logs.
 - **Offline Verification Cache**: Toggle to store root PKI certificate bundles locally.
 - **Target Gateway**: Selector for `dev`, `staging`, or `prod` API environments with endpoint URI display.
+- **Cloud Sync Status**: View cloud sync state and authenticated user session.
 - **Cryptographic Specifications**: Detailed technical breakdown of signatures, hashes, certificate formats, and revocation mechanisms.
 - **Developer Blueprints**: Interactive modals displaying the 7-Stage Architecture and Production Hardening Matrix.
 
@@ -304,7 +309,19 @@ TrustSentry adheres strictly to modern Android architecture principles: **MVVM**
 
 ---
 
-## 6. Data Model & Persistence Layer
+## 7. Cloud Sync & Zero-Trust Authentication
+
+TrustSentry provides enterprise-grade cloud synchronization with zero-trust security:
+
+### Architecture
+- **Zero-Trust Google Sign-In**: User authentication handled securely via Jetpack Credential Manager (`GetSignInWithGoogleOption`).
+- **Cloud Backup & Restore**: Synchronizes verification logs and pinned credentials with Firebase Firestore.
+- **Security Rules**: Strictly bounded by authenticated user ID (`request.auth.uid == userId`) in `firestore.rules`.
+- **Offline Resiliency**: Operates fully offline using the local Room SQLite database if network connectivity is absent.
+
+---
+
+## 8. Data Model & Persistence Layer
 
 TrustSentry uses Android Room with Kotlin Coroutines Flow for local data persistence:
 
@@ -348,7 +365,7 @@ data class VerificationEntity(
 
 ---
 
-## 7. Security, Privacy & Zero-Trust Threat Model
+## 9. Security, Privacy & Zero-Trust Threat Model
 
 | Threat Vector | Mitigation in TrustSentry |
 |:---|:---|
@@ -358,11 +375,11 @@ data class VerificationEntity(
 | **Replay Attacks** | OpenID4VP challenges enforce single-use cryptographic nonces bound to session lifetimes. |
 | **Key Compromise** | Real-time CRL Delta queries and OCSP responder checks immediately invalidate credentials issued by compromised private keys. |
 | **Malicious File Uploads** | All files are quarantined and inspected for malware signatures (e.g. EICAR test patterns) before byte parsing. |
-| **User Privacy** | Scanned payloads remain on-device; verification logs are stored exclusively in the local Room database. |
+| **User Privacy** | Scanned payloads remain on-device; verification logs are stored exclusively in the local Room database unless user chooses cloud sync. |
 
 ---
 
-## 8. Hardware & Sensor Integrations
+## 10. Hardware & Sensor Integrations
 
 - **Camera (`android.permission.CAMERA`)**:
   - CameraX integration with lifecycle binding.
@@ -376,7 +393,7 @@ data class VerificationEntity(
 
 ---
 
-## 10. Developer Setup & CLI Build Commands
+## 11. Developer Setup & CLI Build Commands
 
 ### Prerequisites
 - **Android Studio**: Ladybug (2024.2.1) or newer
@@ -398,7 +415,7 @@ The output APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
 
 ### Running Unit & Robolectric Tests
 
-TrustSentry includes a comprehensive Robolectric local JVM test suite that validates the cryptographic engine, QR generation, roundtrip decoding, malware detection, and status scoring:
+TrustSentry includes a comprehensive Robolectric local JVM test suite that validates the cryptographic engine, QR generation, roundtrip decoding, malware detection, 3D WebGL assets, and status scoring:
 
 ```bash
 # Linux / macOS:
@@ -410,15 +427,16 @@ gradlew.bat :app:testDebugUnitTest
 
 ### GitHub Actions CI/CD
 
-This repository includes a pre-configured GitHub Actions CI workflow in `.github/workflows/android.yml`. Upon pushing to `main` or submitting pull requests, GitHub Actions automatically:
+This repository includes an automated GitHub Actions CI workflow in `.github/workflows/android.yml`. Upon pushing to `main` or submitting pull requests, GitHub Actions automatically:
 1. Provisions JDK 17 environment.
-2. Executes the full Robolectric test suite (`:app:testDebugUnitTest`).
-3. Builds the debug APK (`:app:assembleDebug`).
-4. Uploads the build artifact (`app-debug-apk`) for release inspection.
+2. Prepares local configuration (`.env`).
+3. Executes the full Robolectric test suite (`:app:testDebugUnitTest`).
+4. Builds the debug APK (`:app:assembleDebug`).
+5. Uploads the build artifact (`app-debug-apk`) for release inspection.
 
 ---
 
-## 11. Testing and Quality Assurance
+## 12. Testing and Quality Assurance
 
 ### Test Suite (`ExampleRobolectricTest.kt`)
 
@@ -426,16 +444,18 @@ This repository includes a pre-configured GitHub Actions CI workflow in `.github
 |:---|:---|:---:|
 | `read string from context` | Asserts application name string resource matches "TrustSentry" | **PASSED** |
 | `crypto engine verifies authentic TS1 token` | Confirms Level A token receives `TRUSTED` verdict, score ≥ 90, risk level `LOW` | **PASSED** |
-| `crypto engine detects tampered payload` | Confirms altered claim payload is rejected with `INVALID`, score = 0, risk level `CRITICAL` | **PASSED** |
+| `crypto engine detects tampered payload and fails with INVALID` | Confirms altered claim payload is rejected with `INVALID`, score = 0, risk level `CRITICAL` | **PASSED** |
 | `crypto engine verifies W3C Verifiable Credential 2_0` | Validates Ed25519 DataIntegrityProof, did:web resolution, and SHA-256 digest calculation | **PASSED** |
-| `crypto engine identifies and quarantines EICAR malware` | Confirms quarantine gate halts parsing and flags hostile test payload with score = 0 | **PASSED** |
-| `barcode roundtrip generation and decoding` | Generates a 512px QR bitmap and decodes it with ZXing, verifying 100% byte fidelity | **PASSED** |
-| `commercial barcode classification` | Correctly parses EAN-13, UPC-A, and Code 128 barcodes and assigns `UNABLE_TO_VERIFY` | **PASSED** |
-| `untrusted URL activates phishing guard` | Validates that unsigned URLs trigger `REVIEW` status and phishing defense warnings | **PASSED** |
+| `crypto engine identifies and quarantines EICAR malware string` | Confirms quarantine gate halts parsing and flags hostile test payload with score = 0 | **PASSED** |
+| `barcode roundtrip generation and decoding produces exact content` | Generates a 512px QR bitmap and decodes it with ZXing, verifying 100% byte fidelity | **PASSED** |
+| `commercial barcode classification accurately identifies EAN13 and UPC` | Correctly parses EAN-13, UPC-A, and Code 128 barcodes and assigns `UNABLE_TO_VERIFY` | **PASSED** |
+| `untrusted URL activates phishing guard and review status` | Validates that unsigned URLs trigger `REVIEW` status and phishing defense warnings | **PASSED** |
+| `crypto engine calculates deterministic sha256 hex digest` | Validates deterministic SHA-256 computation against standard NIST test vector | **PASSED** |
+| `verification entity instantiates with proper attributes` | Verifies Room `VerificationEntity` mapping, pin state, and audit attributes | **PASSED** |
 
 ---
 
-## 12. Project Directory Tree
+## 13. Project Directory Tree
 
 ```
 /
@@ -455,6 +475,8 @@ This repository includes a pre-configured GitHub Actions CI workflow in `.github
 ├── metadata.json                          # AI Studio Application metadata
 ├── settings.gradle.kts                    # Root project configuration
 ├── build.gradle.kts                       # Top-level build plugins
+├── firestore.rules                        # Cloud Firestore zero-trust security rules
+├── firebase-blueprint.json                # Firestore database schema blueprint
 ├── gradle/
 │   ├── libs.versions.toml                 # Version catalog (AGP, Compose, CameraX, ZXing, Room)
 │   └── wrapper/
@@ -473,18 +495,22 @@ This repository includes a pre-configured GitHub Actions CI workflow in `.github
         │   │   │   ├── Theme.kt           # Material 3 Dark theme setup
         │   │   │   └── Type.kt            # Typography configurations
         │   │   └── trustsentry/
+        │   │       ├── auth/
+        │   │       │   └── AuthViewModel.kt      # Google Identity via Credential Manager
+        │   │       ├── sync/
+        │   │       │   └── CloudSyncManager.kt   # Firestore cloud backup & restore
         │   │       ├── model/
-        │   │       │   └── Models.kt      # VerificationResult, CheckStatus, ArtifactScenario
+        │   │       │   └── Models.kt             # VerificationResult, CheckStatus, ArtifactScenario
         │   │       ├── crypto/
-        │   │       │   └── CryptoEngine.kt# 7-stage verification engine, hashers, ClamAV gate
+        │   │       │   └── CryptoEngine.kt       # 7-stage verification engine, hashers, ClamAV gate
         │   │       ├── data/
-        │   │       │   ├── AppDatabase.kt # Room database instance
+        │   │       │   ├── AppDatabase.kt        # Room database instance
         │   │       │   ├── VerificationEntity.kt # Audit log entity
         │   │       │   ├── VerificationDao.kt    # Reactive Room DAO
         │   │       │   └── VerificationRepository.kt # Data repository
         │   │       ├── scanner/
-        │   │       │   ├── BarcodeHelper.kt  # ZXing QR bitmap generator & decoder
-        │   │       │   └── QrCodeAnalyzer.kt # Continuous CameraX YUV frame analyzer
+        │   │       │   ├── BarcodeHelper.kt      # ZXing QR bitmap generator & decoder
+        │   │       │   └── QrCodeAnalyzer.kt     # Continuous CameraX YUV frame analyzer
         │   │       └── ui/
         │   │           ├── components/
         │   │           │   ├── ActionCard.kt        # Interactive styled navigation card
@@ -498,7 +524,8 @@ This repository includes a pre-configured GitHub Actions CI workflow in `.github
         │   │           │   ├── UploadScreen.kt      # Document inspector & quarantine presets
         │   │           │   ├── HistoryScreen.kt     # Filterable local audit trail
         │   │           │   ├── SavedScreen.kt       # Pinned credentials vault
-        │   │           │   └── SettingsScreen.kt    # Security toggles & architecture specs
+        │   │           │   ├── AuthScreen.kt        # Zero-trust Google Sign-In & cloud sync
+        │   │           │   └── SettingsScreen.kt    # Security toggles, cloud sync & blueprints
         │   │           └── viewmodel/
         │   │               └── MainViewModel.kt     # StateFlow management & repository binding
         │   └── res/
@@ -510,7 +537,7 @@ This repository includes a pre-configured GitHub Actions CI workflow in `.github
         │           ├── strings.xml                # Strings and localized labels
         │           └── themes.xml
         └── test/java/com/example/
-            └── ExampleRobolectricTest.kt          # Full Robolectric test suite
+            └── ExampleRobolectricTest.kt          # Full 10-test Robolectric suite
 ```
 
 ---

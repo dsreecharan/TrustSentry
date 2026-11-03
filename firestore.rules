@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 120)) &&
+             (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 200)) &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 500));
+    }
+
+    function isValidVerificationRecord(data) {
+      return data.artifactId is string && data.artifactId.size() <= 256 &&
+             data.artifactType is string && data.artifactType.size() <= 128 &&
+             data.issuer is string && data.issuer.size() <= 256 &&
+             data.score is int && data.score >= 0 && data.score <= 100 &&
+             data.status is string && data.status.size() <= 64 &&
+             data.riskLevel is string && data.riskLevel.size() <= 32 &&
+             (!('explanation' in data) || data.explanation is string && data.explanation.size() <= 4000) &&
+             (!('rawValue' in data) || data.rawValue == null || (data.rawValue is string && data.rawValue.size() <= 10000)) &&
+             (!('sha256Digest' in data) || data.sha256Digest == null || (data.sha256Digest is string && data.sha256Digest.size() <= 128)) &&
+             (!('isPinned' in data) || data.isPinned is bool);
+    }
+
+    function isValidChatSession(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.modelUsed is string && data.modelUsed.size() <= 64;
+    }
+
+    function isValidChatMessage(data) {
+      return data.role in ['user', 'model'] &&
+             data.content is string && data.content.size() <= 30000 &&
+             (!('model' in data) || data.model == null || (data.model is string && data.model.size() <= 64)) &&
+             (!('groundedSources' in data) || data.groundedSources == null || (data.groundedSources is string && data.groundedSources.size() <= 10000));
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User Profile Document
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoUrl', 'updatedAt']);
+
+      allow delete: if isOwner(userId);
+
+      // Verifications Subcollection
+      match /verifications/{verificationId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         incoming().verifiedAt is timestamp &&
+                         incoming().verifiedAt <= request.time &&
+                         isValidVerificationRecord(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidVerificationRecord(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['isPinned', 'explanation']);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // Chat Sessions Subcollection
+      match /chats/{chatId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         isValidChatSession(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidChatSession(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'modelUsed', 'updatedAt']);
+
+        allow delete: if isOwner(userId);
+
+        // Chat Messages Subcollection
+        match /messages/{messageId} {
+          allow get, list: if isOwner(userId);
+
+          allow create: if isOwner(userId) &&
+                           incoming().timestamp is timestamp &&
+                           incoming().timestamp <= request.time &&
+                           isValidChatMessage(incoming());
+
+          allow update: if false; // Chat messages are immutable
+
+          allow delete: if isOwner(userId);
+        }
+      }
+    }
+  }
+}

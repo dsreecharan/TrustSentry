@@ -70,7 +70,92 @@ fun SettingsScreen(
             }
         }
 
+        val currentUser by viewModel.currentUser.collectAsState()
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
+        val credentialManager = remember { androidx.credentials.CredentialManager.create(context) }
+
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
+            // Section 0: Firebase Account & Google Auth
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "FIREBASE ACCOUNT & GOOGLE AUTH",
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldAccent,
+                    letterSpacing = 1.sp
+                )
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(18.dp))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        if (currentUser != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = currentUser?.displayName ?: "Authenticated Verifier",
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = currentUser?.email ?: "No email",
+                                        fontSize = 11.5.sp,
+                                        color = TextMuted
+                                    )
+                                    Text(
+                                        text = "UID: " + (currentUser?.uid?.take(16) ?: "") + "...",
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = GoldAccent
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        signOutUser(context, credentialManager, coroutineScope) {}
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceElevated),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.height(34.dp).testTag("btn_settings_sign_out")
+                                ) {
+                                    Text("Sign Out", fontSize = 11.sp, color = StatusInvalid, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Not signed in", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                    Text("Sign in with Google to sync audit logs to Firestore", fontSize = 11.sp, color = TextMuted)
+                                }
+                                Button(
+                                    onClick = { viewModel.navigateTo("auth") },
+                                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.height(34.dp).testTag("btn_settings_sign_in")
+                                ) {
+                                    Text("Sign In", fontSize = 11.sp, color = Color(0xFF080808), fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Section 1: Security & Biometrics
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(

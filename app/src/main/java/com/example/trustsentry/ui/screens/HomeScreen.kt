@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Security
@@ -21,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -108,27 +111,50 @@ fun HomeScreen(
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .background(DarkSurfaceElevated, RoundedCornerShape(20.dp))
-                        .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .background(GoldAccent, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "PKI ACTIVE",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        color = TextSecondary,
-                        letterSpacing = 0.5.sp
-                    )
+                val currentUser by viewModel.currentUser.collectAsState()
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (currentUser == null) {
+                        Button(
+                            onClick = { onNavigate("auth") },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier
+                                .height(32.dp)
+                                .testTag("btn_home_sign_in")
+                        ) {
+                            Text(
+                                text = "Sign In",
+                                color = Color(0xFF080808),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(DarkSurfaceElevated)
+                                .border(1.dp, GoldAccent.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                                .clickable { onNavigate("auth") }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .background(StatusTrusted, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = currentUser?.displayName?.take(10) ?: "Account",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -184,6 +210,17 @@ fun HomeScreen(
                     isPrimary = false,
                     testTag = "btn_upload_document",
                     onClick = { onNavigate("upload") }
+                )
+
+                ActionCard(
+                    title = "Saved Credentials Vault",
+                    description = "Access bookmarked and pinned cryptographic credentials offline",
+                    badgeText = "OFFLINE VAULT",
+                    icon = Icons.Default.Bookmark,
+                    accentColor = GoldAccentLight,
+                    isPrimary = false,
+                    testTag = "btn_open_saved",
+                    onClick = { onNavigate("saved") }
                 )
             }
         }

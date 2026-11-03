@@ -5,26 +5,49 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.trustsentry.crypto.CryptoEngine
 import com.example.trustsentry.data.AppDatabase
+import com.example.trustsentry.data.FirestoreRepository
 import com.example.trustsentry.data.VerificationEntity
 import com.example.trustsentry.data.VerificationRepository
 import com.example.trustsentry.model.ArtifactScenario
 import com.example.trustsentry.model.VerificationResult
 import com.example.trustsentry.model.VerificationStatus
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: VerificationRepository
+    private val localRepository: VerificationRepository
+    val firestoreRepository: FirestoreRepository = FirestoreRepository(application)
 
     init {
         val db = AppDatabase.getDatabase(application)
-        repository = VerificationRepository(db.verificationDao())
+        localRepository = VerificationRepository(db.verificationDao())
     }
 
     // Navigation state
     private val _currentRoute = MutableStateFlow("home")
     val currentRoute: StateFlow<String> = _currentRoute.asStateFlow()
+
+    // Auth state from Firebase Auth
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(Firebase.auth.currentUser)
+    val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
+
+    init {
+        val authListener = FirebaseAuth.AuthStateListener { auth ->
+            _currentUser.value = auth.currentUser
+            val user = auth.currentUser
+            if (user != null) {
+                viewModelScope.launch {
+                    firestoreRepository.saveUserProfile(user)
+                }
+            }
+        }
+        Firebase.auth.addAuthStateListener(authListener)
+    }
 
     // Active Verification Result
     private val _activeResult = MutableStateFlow<VerificationResult?>(null)
@@ -44,10 +67,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val selectedEnvironment = MutableStateFlow("dev") // dev, staging, prod
 
     // Room DB streams
-    val allVerifications: StateFlow<List<VerificationEntity>> = repository.getAllVerifications()
+    val allVerifications: StateFlow<List<VerificationEntity>> = localRepository.getAllVerifications()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val pinnedVerifications: StateFlow<List<VerificationEntity>> = repository.getPinnedVerifications()
+    val pinnedVerifications: StateFlow<List<VerificationEntity>> = localRepository.getPinnedVerifications()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Combined filtered verifications
@@ -90,7 +113,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val result = CryptoEngine.verifyPayload(payload)
             _activeResult.value = result
-            repository.saveVerification(result)
+            localRepository.saveVerification(result)
+            if (Firebase.auth.currentUser != null) {
+                firestoreRepository.syncVerification(result)
+            }
         }
     }
 
@@ -98,7 +124,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val result = CryptoEngine.verifyDocumentBytes(filename, bytes, scenarioHint)
             _activeResult.value = result
-            repository.saveVerification(result)
+            localRepository.saveVerification(result)
+            if (Firebase.auth.currentUser != null) {
+                firestoreRepository.syncVerification(result)
+            }
         }
     }
 
@@ -112,19 +141,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun togglePin(entity: VerificationEntity) {
         viewModelScope.launch {
-            repository.togglePinned(entity.id, entity.isPinned)
+            localRepository.togglePinned(entity.id, entity.isPinned)
         }
     }
 
     fun deleteVerification(entity: VerificationEntity) {
         viewModelScope.launch {
-            repository.delete(entity)
+            localRepository.delete(entity)
         }
     }
 
     fun clearAllHistory() {
         viewModelScope.launch {
-            repository.clearAll()
+            localRepository.clearAll()
         }
     }
 }

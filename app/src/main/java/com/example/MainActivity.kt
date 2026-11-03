@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.trustsentry.firebase.configureAppCheck
 import com.example.trustsentry.ui.components.ResultDetailDialog
 import com.example.trustsentry.ui.screens.*
 import com.example.ui.theme.*
@@ -30,6 +31,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // MANDATORY: Configure App Check before UI or Firebase operations
+        configureAppCheck(this, intent)
+
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -49,7 +54,7 @@ fun TrustSentryMainApp(viewModel: MainViewModel) {
         viewModel.navigateTo("home")
     }
 
-    val showBottomNav = currentRoute !in listOf("scan", "upload")
+    val showBottomNav = currentRoute !in listOf("scan", "upload", "auth")
 
     Scaffold(
         modifier = Modifier
@@ -69,8 +74,8 @@ fun TrustSentryMainApp(viewModel: MainViewModel) {
                 ) {
                     val items = listOf(
                         Triple("home", "Home", Icons.Outlined.Home to Icons.Filled.Home),
+                        Triple("saved", "Vault", Icons.Outlined.BookmarkBorder to Icons.Filled.Bookmark),
                         Triple("history", "History", Icons.Outlined.History to Icons.Filled.History),
-                        Triple("saved", "Saved", Icons.Outlined.BookmarkBorder to Icons.Filled.Bookmark),
                         Triple("settings", "Settings", Icons.Outlined.Settings to Icons.Filled.Settings)
                     )
                     items.forEach { (route, label, icons) ->
@@ -123,6 +128,9 @@ fun TrustSentryMainApp(viewModel: MainViewModel) {
                 "upload" -> UploadScreen(
                     viewModel = viewModel,
                     onBack = { viewModel.navigateTo("home") }
+                )
+                "auth" -> AuthScreen(
+                    onAuthSuccess = { viewModel.navigateTo("home") }
                 )
                 "history" -> HistoryScreen(
                     viewModel = viewModel
